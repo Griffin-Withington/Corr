@@ -1,0 +1,149 @@
+# Linear Regression Model - Directed Process by Sigma Coding
+#
+# Attempts to model the relationship between two variables with a line
+#
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import statsmodels.api as sm
+import math
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+from scipy import stats
+from scipy.stats import kurtosis, skew
+import pickle
+
+# Load the data
+filename = 'oil_exxon.xlsx'
+
+price_data = pd.read_excel(filename)
+#print(price_data.head(8))
+"""
+        date  exon_price  oil_price
+0 2014-03-28   97.699997     106.64
+1 2014-03-31   97.680000     105.95
+2 2014-04-01   97.730003     105.70
+3 2014-04-02   97.949997     103.37
+4 2014-04-03   97.930000     104.88
+"""
+# Looks like that^
+# We're going to shift our data so the date becomes our index. I believe this only works if there are no repeat dates. Fingers Crossed
+price_data.index = pd.to_datetime(price_data['date'])
+#print(price_data.head(8))
+price_data = price_data.drop(['date'], axis = 1)
+#print(price_data.head())
+
+
+#############################
+# Data Cleaning
+######
+
+#print(price_data.dtypes)
+new_column_names = {'exon_price': 'exxon_price'}
+price_data = price_data.rename(columns = new_column_names)
+
+### We're gonna drop the rows with missing values
+### Using the dropna method
+
+#print(price_data.isna().any())
+price_data = price_data.dropna(0)
+#print(price_data.isna().any())
+
+#print(price_data.head(3))
+
+
+#####################
+# MatPlotLib Review
+z = price_data['exxon_price']
+w = price_data['oil_price']
+
+plt.plot(z, w, 'o', color='red', label='Daily Price')
+plt.title('Exxon Vs. Oil')
+plt.legend()
+#plt.show()
+#print(price_data.corr())
+#print(price_data.describe())
+
+
+#####################
+# Building a Regression Model
+Y = price_data.drop('oil_price', axis=1)
+X = price_data[['oil_price']]
+
+### Need a training instance and a testing instance
+
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.2, random_state=1)
+regression_model = LinearRegression()
+regression_model.fit(X_train, Y_train)
+
+#print(regression_model.predict(X_test))
+intercept = regression_model.intercept_[0]
+#print(intercept)
+coefficient = regression_model.coef_[0][0]
+#print(coefficient)
+
+# Not really sure what these mean. I suppose it might just mean Pr(X) = 70.54... + 0.2294....*x
+
+prediction = regression_model.predict([[80]])
+#print(prediction)
+# Output for X=80 was 88.91. No Shab
+y_predict = regression_model.predict(X_test)
+#print(y_predict[0:5])
+
+# Time to evaluate our model
+
+X2 = sm.add_constant(X)
+#print(X2)
+model = sm.OLS(Y, X2)
+est = model.fit()
+'''
+print(est.conf_int())
+print(est.summary())
+'''
+
+# Hypothesis Testing
+print(est.pvalues)
+print(mean_absolute_error(Y_test, y_predict))
+print(math.sqrt(mean_squared_error(Y_test, y_predict)))
+
+print(r2_score(Y_test, y_predict))
+
+(Y_test - y_predict).hist(grid = False, color = 'royalblue')
+plt.title("Model Residuals")
+plt.show()
+
+plt.scatter(X_test, Y_test,  color='gainsboro', label = 'Price')
+plt.plot(X_test, y_predict, color='royalblue', linewidth = 3, linestyle= '-',label ='Regression Line')
+
+plt.title("Linear Regression Exxon Mobile Vs. Oil")
+plt.xlabel("Oil")
+plt.ylabel("Exxon Mobile")
+plt.legend()
+plt.show()
+
+# The coefficients
+print('Oil coefficient:' + '\033[1m' + '{:.2}''\033[0m'.format(regression_model.coef_[0][0]))
+
+# The mean squared error
+print('Mean squared error: ' + '\033[1m' + '{:.4}''\033[0m'.format(model_mse))
+
+# The mean squared error
+print('Root Mean squared error: ' + '\033[1m' + '{:.4}''\033[0m'.format(math.sqrt(model_mse)))
+
+# Explained variance score: 1 is perfect prediction
+print('R2 score: '+ '\033[1m' + '{:.2}''\033[0m'.format(r2_score(Y_test,y_predict)))
+
+
+# pickle the model.
+with open('my_linear_regression.sav','wb') as f:
+     pickle.dump(regression_model,f)
+
+# load it back in.
+with open('my_linear_regression.sav', 'rb') as pickle_file:
+     regression_model_2 = pickle.load(pickle_file)
+
+# make a new prediction.
+regression_model_2.predict([[67.33]])
